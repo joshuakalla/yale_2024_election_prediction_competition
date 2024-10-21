@@ -1,0 +1,2 @@
+# yale_2024_election_prediction_competition
+2024 Election Prediction Competition
