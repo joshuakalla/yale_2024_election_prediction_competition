@@ -1,0 +1,66 @@
+```{r}
+  library(dplyr)
+
+  # Import the datasets
+  presidential_elections_dataframe <- read.csv("1976-2020-president.csv")
+  presidential_polling_dataframe <- read.csv("president_polls.csv")
+  senate_elections_dataframe <- read.csv("1976-2020-senate.csv")
+  senate_polling_dataframe <- read.csv("senate_polls.csv")
+  
+  # Set weighting variables
+  poll_weight <- 0.25
+  election_weight <- 0.375
+  
+  # Function to calculate Trump vote share by state for a given election year
+  calculate_trump_vote_share <- function(election_data, year) {
+    election_data |>
+      filter(year == !!year) |>
+      group_by(state) |>
+      summarize(
+        non_trump_candidate_votes = sum(candidatevotes[candidate != "TRUMP, DONALD J."], na.rm = TRUE),
+        trump_votes = sum(candidatevotes[candidate == "TRUMP, DONALD J."], na.rm = TRUE),
+        trump_vote_share = (trump_votes / (non_trump_candidate_votes + trump_votes)) * 100
+      ) |>
+      rename_with(~ paste0(., "_", year), -state)  # Append year to column names
+  }
+  
+  # Calculate Trump vote shares for 2016 and 2020
+  state_election_2016 <- calculate_trump_vote_share(presidential_elections_dataframe, 2016)
+  state_election_2020 <- calculate_trump_vote_share(presidential_elections_dataframe, 2020)
+  
+  # Filter and summarize Trump polling data
+  trump_state_president_polling <- presidential_polling_dataframe |>
+    filter(state != "", answer == "Trump") |>
+    mutate(state = toupper(state)) |>
+    group_by(state) |>
+    summarize(average_trump_poll_rate = mean(pct, na.rm = TRUE))
+  
+  # Merge election data and polling data
+  merged_data <- state_election_2016 |>
+    left_join(state_election_2020, by = "state") |>
+    left_join(trump_state_president_polling, by = "state")
+  
+  # Calculate the weighted Trump vote share
+  weighted_average <- merged_data |>
+    mutate(weighted_trump_vote_share = 
+             poll_weight * average_trump_poll_rate +
+             election_weight * trump_vote_share_2016 +
+             election_weight * trump_vote_share_2020)
+  
+  # Republican state senate polling data
+  republican_state_senate_polling <- senate_polling_dataframe |>
+    filter(state != "", party == "REP") |>
+    mutate(state = toupper(state)) |>
+    group_by(state) |>
+    summarize(average_republican_senate_poll_rate = mean(pct, na.rm = TRUE))
+  
+  # Calculate the vote share difference
+  weighted_data <- weighted_average |>
+    select(state, weighted_trump_vote_share) |>
+    left_join(republican_state_senate_polling |> select(state, average_republican_senate_poll_rate), by = "state") |>
+    mutate(vote_share_difference = weighted_trump_vote_share - average_republican_senate_poll_rate)
+  
+  # Display the result
+  weighted_data
+```
+

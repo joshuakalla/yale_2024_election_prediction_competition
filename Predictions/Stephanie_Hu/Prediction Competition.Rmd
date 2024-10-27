@@ -1,0 +1,22 @@
+---
+title: "Election Prediction Competition"
+author: "Stephanie Hu"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidycensus)
+library(tidyverse)
+
+census_api_key("4a0f98ca07a7da0e0df171eabffd7452c7b473bc")
+```
+
+```{r}
+
+```
+

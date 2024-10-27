@@ -1,0 +1,7 @@
+Team Name: Nate Gold
+Members: Ayush Tibrewal, Nick Ribeiro, Brandon Du, William Ning, and Tristan Brigham
+
+Explanations:
+We elected to take a simplified approach to voter turnout metric, utilizing population changes in each state and our differentiated opinion on overall U.S. presidential election voter turnout. Previous years of voter turnout and vote counts were used. For Senate and House of Representative turnouts, we assumed a mild increase in relative turnout and projected this across states. For time for NBC news to announce the winners in each state, we mostly went off of last year's election, introducing a buffer for an expected longer time due to an incredibly close race.
+
+Vote share predictions were also very simplified. For Trump's vote share, we used a combination of the trends based on his 2016 and 2020 performances, while also factoring in urbanization and job growth. Our theory is that based on 2020 trends, urban areas would go further left while rural areas would go further right, while job growth relative to average could predict happiness with Biden/Harris over Trump. Senate predictions were solely based on 538's polling numbers relative to the Trump voting share we predicted. Unfortunately, we did not make predictions for the house races.

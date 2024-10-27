@@ -1,0 +1,142 @@
+---
+title: "Model Building"
+output: html_document
+date: "2024-10-27"
+---
+
+```{r}
+library(dplyr)
+library(stringr)
+#install.packages("remotes")
+library(remotes)
+#remotes::install_github("kuriwaki/ccesMRPprep")
+#library(ccesMRPprep)
+#install.packages("data.table")
+library(data.table)
+library(tidyr)
+```
+
+```{r}
+#loading data
+final_data <- read.csv("/Users/liam/Downloads/courses/PLSC_204/ISPS Election Prediction/full_district_data_v2.csv")
+
+```
+
+```{r}
+#explore data
+colnames(final_data)
+
+#adding a col called rep_pres_votes
+final_data$rep_pres_votes_now <- final_data$rep_pct_pres_now * final_data$presvotes_total_now
+final_data$rep_pres_votes_last <- final_data$rep_pct_pres_last * final_data$presvotes_total_last
+final_data$rep_house_votes <- final_data$rep_pct_house_race * final_data$house_votes_total
+  
+```
+
+```{r}
+#model to predict rep_pres_votes
+final_data_16_to_20 <- subset(final_data, year %in% c(2016,2020))
+#narrowing to elections in which trump has competed (and for which we have past vote info)
+
+pres_lm1 = lm(rep_pres_votes_now ~ relative_partisanship_CPVI + rep_pres_votes_last + pct_male + pct_senior, data = final_data_16_to_20)
+
+summary(pres_lm1)
+
+```
+
+```{r}
+#final data but only for 2024 and with cd, year, state_ab
+
+pred_data_2024 <- subset(final_data, year == 2024)
+
+
+#use model to predict rep_pres_votes for 2024
+
+pred_data_2024$rep_pres_votes_pred <- predict(pres_lm1, newdata = pred_data_2024)
+
+```
+
+```{r}
+
+#now need to predict turnout, presvotes_total_now
+
+pres_lm2 = lm(presvotes_total_now ~ relative_partisanship_CPVI + rep_pres_votes_last + pct_black + pct_latino + pct_senior, data = final_data_16_to_20)
+
+summary(pres_lm2)
+
+```
+
+```{r}
+#adding presvotes_total_now predictions to pred_data_2024
+
+pred_data_2024$presvotes_total_pred <- predict(pres_lm2, newdata = pred_data_2024)
+
+```
+
+```{r}
+#sum up rep_pres_votes_pred and rep_pres_votes_last for each state
+
+PQ1 <- pred_data_2024 %>%
+  group_by(state_ab) %>%
+  summarise(rep_pres_votes_pred = sum(rep_pres_votes_pred), presvotes_total_pred = sum(presvotes_total_pred), pct_rep_pres_pred = sum(rep_pres_votes_pred) / sum(presvotes_total_pred))
+
+write.csv(PQ1,"~/Downloads/pres_predictions.csv", row.names = FALSE)
+
+```  
+          
+```{r}
+#model to predict pct of rep_house_votes
+final_data_12_to_20 <- subset(final_data, year %in% c(2012, 2016,2020))
+#narrowing to elections in which trump has competed (and for which we have past vote info)
+
+house_lm1 = lm(rep_pct_house_race ~ relative_partisanship_CPVI + house_incumbency + pct_senior + pct_white + d_cand_house, data = final_data_12_to_20)
+
+summary(house_lm1)
+```
+
+
+```{r}
+
+pred_data_2024$pct_rep_house_pred <- predict(house_lm1, newdata = pred_data_2024)
+
+```
+
+```{r}
+#model to predict total number of house votes
+final_data_12_to_20$closeness <- abs(final_data_12_to_20$relative_partisanship_CPVI)^(-1)
+
+house_lm2 = lm(house_votes_total ~ house_incumbency + total_population + pct_senior + pct_latino + d_cand_house + r_cand_house, data = final_data_12_to_20)
+
+summary(house_lm2)
+```
+
+```{r}
+#predicting number of votes
+pred_data_2024$housevotes_total_pred <- predict(house_lm2, newdata = pred_data_2024)
+
+#adding a variable for pctvotes_trump
+pred_data_2024$pct_trump_pred <- pred_data_2024$rep_pres_votes_pred/pred_data_2024$presvotes_total_pred
+
+#setting predicted republican share to 0 in races where a republican isn't running
+#for (i in nrow(pred_data_2024)){
+#  if (pred_data_2024$r_cand_house[i] == FALSE){
+#    pred_data_2024$pct_rep_house_pred[i] <- 0
+#  }
+#} # I messed up this coding somehow AAHHHH — would have been so much more helpful if I didn't mess it up
+
+#adding a variable which compares prediction for house race vs trump
+pred_data_2024$trump_dif <- pred_data_2024$pct_trump_pred - pred_data_2024$pct_rep_house_pred
+pred_data_2024$fraction_turnout <- pred_data_2024$housevotes_total_pred/pred_data_2024$presvotes_total_pred
+
+table_a <- pred_data_2024[,colnames(pred_data_2024) %in% c("cd", "pct_rep_house_pred", "pct_trump_pred", "trump_dif", "presvotes_total_pred", "housevotes_total_pred", "fraction_turnout")]
+
+write.csv(table_a,"~/Downloads/house_predictoins.csv", row.names = FALSE)
+
+```
+
+
+
+
+
+
+

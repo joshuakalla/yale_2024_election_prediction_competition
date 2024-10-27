@@ -1,0 +1,137 @@
+---
+title: "State Presidential"
+output: pdf_document
+date: "2024-10-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+
+
+```{r}
+elector <- read.csv("Voting Data - PresidentialResults District.csv")
+
+elector_condensed <- elector %>%
+  group_by(state) %>%
+  reframe(
+    dem_votes_2016 = dpres_vote[year == 2016],
+    dem_votes_2020 = dpres_vote[year == 2020],
+    predicted_dem = round(1.10 * dpres_vote[year == 2020] - 0.15 * dpres_vote[year == 2016], 0),
+    
+    rep_votes_2016 = rpres_votes[year == 2016],
+    rep_votes_2020 = rpres_votes[year == 2020],
+    predicted_rep = round(1.10 * rpres_votes[year == 2020] - 0.15 * rpres_votes[year == 2016], 0),
+    
+    oth_votes_2016 = opres_vote[year == 2016],
+    oth_votes_2020 = opres_vote[year == 2020],
+    predicted_oth = round(0.7 * opres_vote[year == 2020] + 0.3 * opres_vote[year == 2016], 0),
+    
+    predicted_total = predicted_rep + predicted_dem + predicted_oth
+  ) %>%
+  mutate(
+    predicted_dem_share = round(predicted_dem/predicted_total, 4)*100,
+    predicted_rep_share = round(predicted_rep/predicted_total, 4)*100,
+    predicted_oth_share = round(predicted_oth/predicted_total, 4)*100
+  )
+
+elector_results <- subset(elector_condensed, select = c("state", "predicted_rep_share", "predicted_dem_share", "predicted_oth_share"))
+
+```
+
+
+```{r}
+# Republican analyzed data
+elector_results <- elector_results %>%
+  filter(state != "Maine" & state != "Nebraska") %>%
+  mutate(
+    predicted_rep_share = case_when(
+      state == "Arizona" ~ 48.43,
+      state == "Georgia" ~ 50.18,
+      state == "Florida" ~ 52.52,
+      state == "Michigan" ~ 48.37,
+      state == "Nevada" ~ 47.09,
+      state == "North Carolina" ~ 50.10,
+      state == "Pennsylvania" ~ 48.36,
+      state == "Wisconsin" ~ 48.95,
+      TRUE ~ predicted_rep_share
+    ),
+    predicted_dem_share = case_when(
+      state == "Arizona" ~ 50.00,
+      state == "Georgia" ~ 48.55,
+      state == "Florida" ~ 46.80,
+      state == "Michigan" ~ 50.09,
+      state == "Nevada" ~ 50.40,
+      state == "North Carolina" ~ 48.93,
+      state == "Pennsylvania" ~ 50.02,
+      state == "Wisconsin" ~ 49.34,
+      TRUE ~ predicted_dem_share
+    ),
+    predicted_oth_share = case_when(
+      state == "Arizona" ~ 1.56,
+      state == "Georgia" ~ 1.26,
+      state == "Florida" ~ 0.684,
+      state == "Michigan" ~ 1.54,
+      state == "Nevada" ~ 2.51,
+      state == "North Carolina" ~ 0.93,
+      state == "Pennsylvania" ~ 1.62,
+      state == "Wisconsin" ~ 1.71,
+      TRUE ~ predicted_oth_share
+  )
+  )
+```
+
+
+```{r}
+elector_popular <- subset(elector_condensed, select = c("state", "predicted_dem", "predicted_rep", "predicted_oth", "predicted_total"))
+
+elector_popular <- elector_popular %>%
+  filter(state != "Nebraska" & state != "Maine") %>%
+  mutate(
+    predicted_rep = case_when(
+      state == "Arizona" ~ 1597090,
+      state == "Georgia" ~ 2468882,
+      state == "Florida" ~ 5656163,
+      state == "Michigan" ~ 2686928,
+      state == "Nevada" ~ 659338,
+      state == "North Carolina" ~ 2760412,
+      state == "Pennsylvania" ~ 3140167,
+      state == "Wisconsin" ~ 1619994,
+      TRUE ~ predicted_rep
+    ),
+    predicted_dem = case_when(
+      state == "Arizona" ~ 1648664,
+      state == "Georgia" ~ 2388833,
+      state == "Florida" ~ 5040368,
+      state == "Michigan" ~ 2782086,
+      state == "Nevada" ~ 705627,
+      state == "North Carolina" ~ 2697887,
+      state == "Pennsylvania" ~ 3247857,
+      state == "Wisconsin" ~ 1633160,
+      TRUE ~ predicted_dem
+    ),
+    predicted_oth = case_when(
+      state == "Arizona" ~ 51466,
+      state == "Georgia" ~ 62139,
+      state == "Florida" ~ 73701,
+      state == "Michigan" ~ 85406,
+      state == "Nevada" ~ 35096,
+      state == "North Carolina" ~ 51363,
+      state == "Pennsylvania" ~ 105292,
+      state == "Wisconsin" ~ 56613,
+      TRUE ~ predicted_oth
+  ),
+    predicted_total = predicted_rep + predicted_dem + predicted_oth
+)
+```
+
+```{r}
+(rep_pop <- sum(elector_popular$predicted_rep))
+rep_pop/sum(elector_popular$predicted_total)
+
+(dem_pop <- sum(elector_popular$predicted_dem))
+dem_pop/sum(elector_popular$predicted_total)
+```
+

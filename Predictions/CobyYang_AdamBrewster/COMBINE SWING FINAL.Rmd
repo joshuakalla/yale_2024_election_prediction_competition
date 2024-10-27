@@ -1,0 +1,880 @@
+---
+title: "COMBINE SWING FINAL"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-10-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+#Arizona
+```{r}
+data <- read.csv("Voting Data - AZ.csv")
+```
+
+##Aggregate Total Percentage of Vote Shares and Average Vote Amount Across 2012, 2016, and 2020
+
+```{r}
+data <- data %>%
+  mutate(
+    r12_r16_pct = rowSums(data[, c("r16_amt", "r12_amt")]) / 
+      rowSums(data[, c("r16_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt")]),
+    d12_d16_pct = rowSums(data[, c("d16_amt", "d12_amt")]) / 
+      rowSums(data[, c("r16_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt")]),
+    o16_o20_pct = rowSums(data[, c("o16_amt", "o20_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")])
+  )
+
+
+data <- data %>%
+  mutate(
+    r12_r16_amt = round(rowSums(data[, c("r16_amt", "r12_amt")]) 
+                        / 2, 0),
+    d12_d16_amt = round(rowSums(data[, c("d16_amt", "d12_amt")]) 
+                        / 2, 0)
+  )
+
+data <- data %>%
+  mutate(
+    CAINC416_420 = round(rowMeans(data[, c("CAINC420", "CAINC416")]), 4)
+  )
+```
+
+##Testing Models
+
+```{r}
+#Republican 
+test1 <- lm(r20_amt ~ rreg20_pct + r12_r16_amt + CAINC416_420, data = data)
+summary(test1)
+data$r1_predict <- predict(test1)
+data$r1_error <- data$r20_amt - data$r1_predict
+sum(data$r1_error)
+
+
+#Democrat
+test2 <- lm(d20_amt ~ CAINC420 + dreg20_pct + d12_d16_amt, data = data)
+summary(test2)
+data$d2_predict <- predict(test2)
+data$d2_error <- data$d20_amt - data$d2_predict
+sum(data$d2_error)
+
+#Other
+test3 <- lm(o20_amt ~ r12_r16_amt + o16_o20_pct + d12_d16_amt, data = data)
+summary(test3)
+data$o2_predict <- predict(test3)
+data$o2_error <- data$o20_amt - data$o2_predict
+sum(data$d2_error)
+```
+
+##Testing with 24 registration details
+
+```{r}
+#Republican
+(test1_coeff <- test1$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_r24_amt = round(test1_coeff["(Intercept)"] + 
+                     test1_coeff["rreg20_pct"] * rreg24_pct + 
+                     test1_coeff["r12_r16_amt"] * r12_r16_amt + 
+                     test1_coeff["CAINC416_420"] * CAINC422, 0)
+  )
+pr24_amt <- sum(data$predict_r24_amt)
+
+#Democrats
+(test2_coeff <- test2$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_d24_amt = round(test2_coeff["(Intercept)"] + 
+                     test2_coeff["CAINC420"] * CAINC422 +
+                     test2_coeff["dreg20_pct"] * dreg24_pct + 
+                     test2_coeff["d12_d16_amt"] * d12_d16_amt, 0)
+  )
+pd24_amt <- sum(data$predict_d24_amt)
+
+#Other
+(test3_coeff <- test3$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_o24_amt = round(test3_coeff["(Intercept)"] + 
+                     test3_coeff["r12_r16_amt"] * r12_r16_amt + 
+                     test3_coeff["o16_o20_pct"] * o16_o20_pct +
+                     test3_coeff["d12_d16_amt"] * d12_d16_amt, 0)
+  )
+po24_amt <- sum(data$predict_o24_amt)
+```
+
+##Results
+
+```{r}
+AZ24_Predict <- data.frame(
+    Party = c("Democrats", "Republican", "Other"),
+    `Predicted Vote Amount` = c(pd24_amt, pr24_amt, po24_amt),
+    `Predict Vote Share` = c(pd24_amt / (pd24_amt + pr24_amt + po24_amt)*100, pr24_amt 
+                             / (pd24_amt + pr24_amt + po24_amt) *100, po24_amt / (pd24_amt + pr24_amt + 
+                                                                                    po24_amt)*100)
+  )
+AZ24_Predict
+```
+
+
+#Georgia
+```{r}
+data <- read.csv("Voting Data - GA.csv")
+```
+
+
+##Testing Models
+```{r}
+#Republican
+test1 <- lm(r20_amt ~ d12_amt + d16_amt + r16_amt + o16_amt + CAINC420, data = data)
+summary(test1)
+data$r1_predict <- predict(test1)
+data$r1_error <- data$r20_amt - data$r1_predict
+sum(data$r1_error)
+
+
+#Democrats
+test2 <- lm(d20_amt ~ d12_amt + d16_amt + r16_amt + o16_amt + CAINC420, data = data)
+summary(test2)
+data$d2_predict <- predict(test2)
+data$d2_error <- data$d20_amt - data$d2_predict
+sum(data$d2_error)
+
+#Other
+test3 <- lm(o20_amt ~ d12_amt + d16_amt + o16_amt + r12_amt, data = data)
+summary(test3)
+data$o2_predict <- predict(test3)
+data$o2_error <- data$o20_amt - data$o2_predict
+sum(data$d2_error)
+```
+
+##Testing with updated CAINC4 data 
+
+```{r}
+#Republican
+(test1_coeff <- test1$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_r24_amt = round(test1_coeff["(Intercept)"] + 
+                     test1_coeff["d12_amt"] * d12_amt + 
+                     test1_coeff["d16_amt"] * d16_amt +
+                     test1_coeff["r16_amt"] * r16_amt + 
+                     test1_coeff["o16_amt"] * o16_amt + 
+                     test1_coeff["CAINC420"] * CAINC422, 0)
+  )
+pr24_amt <- sum(data$predict_r24_amt)
+
+#Democrats
+(test2_coeff <- test2$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_d24_amt = round(test2_coeff["(Intercept)"] + 
+                     test2_coeff["d12_amt"] * d12_amt + 
+                     test2_coeff["d16_amt"] * d16_amt +
+                     test2_coeff["r16_amt"] * r16_amt + 
+                     test2_coeff["o16_amt"] * o16_amt + 
+                     test2_coeff["CAINC420"] * CAINC422, 0)
+  )
+pd24_amt <- sum(data$predict_d24_amt)
+
+#Other
+(test3_coeff <- test3$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_o24_amt = round(test3_coeff["(Intercept)"] + 
+                     test3_coeff["d12_amt"] * d12_amt + 
+                     test3_coeff["d16_amt"] * d16_amt +
+                     test3_coeff["r12_amt"] * r12_amt +
+                     test3_coeff["o16_amt"] * o16_amt, 0)
+  )
+po24_amt <- sum(data$predict_o24_amt)
+```
+
+##Results
+```{r}
+GA24_Predict <- data.frame(
+    Party = c("Democrats", "Republican", "Other"),
+    `Predicted Vote Amount` = c(pd24_amt, pr24_amt, po24_amt),
+    `Predict Vote Share` = c(pd24_amt / (pd24_amt + pr24_amt + po24_amt)*100, pr24_amt 
+                             / (pd24_amt + pr24_amt + po24_amt) *100, po24_amt / (pd24_amt + pr24_amt + 
+                                                                                    po24_amt)*100)
+  )
+GA24_Predict
+```
+
+
+#Florida
+```{r}
+data <- read.csv("Voting Data - FL.csv")
+```
+
+## Aggregate Total Percentage of Vote Shares and Average Vote Amount Across 2012, 2016, and 2020
+```{r}
+data <- data %>%
+  mutate(
+    r12_r20_pct = rowSums(data[, c("r16_amt", "r20_amt", "r12_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")]),
+    d12_d20_pct = rowSums(data[, c("d16_amt", "d20_amt", "d12_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")]),
+    o16_o20_pct = rowSums(data[, c("o16_amt", "o20_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")])    
+  )
+
+data <- data %>%
+  mutate(
+    r12_r20_amt = round(rowSums(data[, c("r16_amt", "r20_amt", "r12_amt")]) 
+                        / 3, 0),
+    d12_d20_amt = round(rowSums(data[, c("d16_amt", "d20_amt", "d12_amt")]) 
+                        / 3, 0)
+  )
+
+data <- data %>%
+  mutate(
+    CAINC416_420 = round(rowMeans(data[, c("CAINC420", "CAINC416")]), 4)
+  )
+```
+
+## Testing Models
+```{r}
+#Republican 
+test1 <- lm(r20_amt ~ r12_r20_pct + rreg20_pct + r12_r20_amt + d12_d20_amt + oreg20_pct + o16_o20_pct, data = data)
+summary(test1)
+data$r1_predict <- predict(test1)
+data$r1_error <- data$r20_amt - data$r1_predict
+sum(data$r1_error)
+
+##summary(lm(r20_amt ~ rreg20_pct + d16_amt + r16_amt, data = data))
+
+
+#Democrat
+test2 <- lm(d20_amt ~ d12_d20_pct + dreg20_pct + d12_d20_amt + CAINC420 + o16_o20_pct, data = data)
+summary(test2)
+data$d2_predict <- predict(test2)
+data$d2_error <- data$d20_amt - data$d2_predict
+sum(data$d2_error)
+
+#Other
+test3 <- lm(o20_amt ~ o16_o20_pct + d12_d20_amt + r12_r20_amt, data = data)
+summary(test3)
+data$o2_predict <- predict(test3)
+data$o2_error <- data$o20_amt - data$o2_predict
+sum(data$d2_error)
+```
+
+## Testing with 24 registration details
+```{r}
+#Republican
+(test1_coeff <- test1$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_r24_amt = round(test1_coeff["(Intercept)"] + 
+                     test1_coeff["r12_r20_pct"] * r12_r20_pct + 
+                     test1_coeff["rreg20_pct"] * rreg24_pct + 
+                     test1_coeff["r12_r20_amt"] * r12_r20_amt +
+                     test1_coeff["d12_d20_amt"] * d12_d20_amt + 
+                     test1_coeff["oreg20_pct"] * oreg24_pct +
+                     test1_coeff["o16_o20_pct"] * o16_o20_pct  , 0)
+  )
+pr24_amt <- sum(data$predict_r24_amt)
+
+#Democrats
+(test2_coeff <- test2$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_d24_amt = round(test2_coeff["(Intercept)"] + 
+                     test2_coeff["d12_d20_pct"] * d12_d20_pct + 
+                     test2_coeff["dreg20_pct"] * dreg24_pct +
+                     test2_coeff["d12_d20_amt"] * d12_d20_amt + 
+                     test2_coeff["CAINC420"] * CAINC422 + 
+                     test2_coeff["o16_o20_pct"] * o16_o20_pct, 0)
+  )
+pd24_amt <- sum(data$predict_d24_amt)
+
+#Other
+(test3_coeff <- test3$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_o24_amt = round(test3_coeff["(Intercept)"] + 
+                     test3_coeff["o16_o20_pct"] * o20_pct + 
+                     test3_coeff["d12_d20_amt"] * (d16_amt + d20_amt)/2 + 
+                     test3_coeff["r12_r20_amt"] * (r16_amt + r20_amt)/2, 0)
+  )
+po24_amt <- sum(data$predict_o24_amt)
+
+```
+
+## Results
+```{r}
+
+FL24_Predict <- data.frame(
+    Party = c("Democrats", "Republican", "Other"),
+    `Predicted Vote Amount` = c(pd24_amt, pr24_amt, po24_amt),
+    `Predict Vote Share` = c(pd24_amt / (pd24_amt + pr24_amt + po24_amt)*100, pr24_amt 
+                             / (pd24_amt + pr24_amt + po24_amt) *100, po24_amt / (pd24_amt + pr24_amt + 
+                                                                                    po24_amt)*100)
+  )
+
+FL24_Predict
+```
+
+#Michigan
+```{r}
+data <- read.csv("Voting Data - MI.csv")
+```
+
+
+##Testing Models
+```{r}
+#Republican
+test1 <- lm(r20_amt ~ d12_amt + d16_amt + r16_amt + o16_amt + CAINC420, data = data)
+summary(test1)
+data$r1_predict <- predict(test1)
+data$r1_error <- data$r20_amt - data$r1_predict
+sum(data$r1_error)
+
+
+#Democrats
+test2 <- lm(d20_amt ~ d12_amt + d16_amt + r16_amt + o16_amt + CAINC420, data = data)
+summary(test2)
+data$d2_predict <- predict(test2)
+data$d2_error <- data$d20_amt - data$d2_predict
+sum(data$d2_error)
+
+#Other
+test3 <- lm(o20_amt ~ d12_amt + d16_amt + o16_amt + r12_amt, data = data)
+summary(test3)
+data$o2_predict <- predict(test3)
+data$o2_error <- data$o20_amt - data$o2_predict
+sum(data$d2_error)
+```
+
+##Testing with updated CAINC4 data 
+
+```{r}
+#Republican
+(test1_coeff <- test1$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_r24_amt = round(test1_coeff["(Intercept)"] + 
+                     test1_coeff["d12_amt"] * d12_amt + 
+                     test1_coeff["d16_amt"] * d16_amt +
+                     test1_coeff["r16_amt"] * r16_amt + 
+                     test1_coeff["o16_amt"] * o16_amt + 
+                     test1_coeff["CAINC420"] * CAINC422, 0)
+  )
+pr24_amt <- sum(data$predict_r24_amt)
+
+#Democrats
+(test2_coeff <- test2$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_d24_amt = round(test2_coeff["(Intercept)"] + 
+                     test2_coeff["d12_amt"] * d12_amt + 
+                     test2_coeff["d16_amt"] * d16_amt +
+                     test2_coeff["r16_amt"] * r16_amt + 
+                     test2_coeff["o16_amt"] * o16_amt + 
+                     test2_coeff["CAINC420"] * CAINC422, 0)
+  )
+pd24_amt <- sum(data$predict_d24_amt)
+
+#Other
+(test3_coeff <- test3$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_o24_amt = round(test3_coeff["(Intercept)"] + 
+                     test3_coeff["d12_amt"] * d12_amt + 
+                     test3_coeff["d16_amt"] * d16_amt +
+                     test3_coeff["r12_amt"] * r12_amt +
+                     test3_coeff["o16_amt"] * o16_amt, 0)
+  )
+po24_amt <- sum(data$predict_o24_amt)
+```
+
+##Results
+```{r}
+MI24_Predict <- data.frame(
+    Party = c("Democrats", "Republican", "Other"),
+    `Predicted Vote Amount` = c(pd24_amt, pr24_amt, po24_amt),
+    `Predict Vote Share` = c(pd24_amt / (pd24_amt + pr24_amt + po24_amt)*100, pr24_amt 
+                             / (pd24_amt + pr24_amt + po24_amt) *100, po24_amt / (pd24_amt + pr24_amt + 
+                                                                                    po24_amt)*100)
+  )
+MI24_Predict
+```
+
+#North Carolina
+```{r}
+data <- read.csv("Voting Data - NC.csv")
+```
+
+## Aggregate Total Percentage of Vote Shares and Average Vote Amount Across 2012, 2016, and 2020
+```{r}
+data <- data %>%
+  mutate(
+    r12_r20_pct = rowSums(data[, c("r16_amt", "r20_amt", "r12_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")]),
+    d12_d20_pct = rowSums(data[, c("d16_amt", "d20_amt", "d12_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")]),
+    o16_o20_pct = rowSums(data[, c("o16_amt", "o20_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")])    
+  )
+
+data <- data %>%
+  mutate(
+    r12_r20_amt = round(rowSums(data[, c("r16_amt", "r20_amt", "r12_amt")]) 
+                        / 3, 0),
+    d12_d20_amt = round(rowSums(data[, c("d16_amt", "d20_amt", "d12_amt")]) 
+                        / 3, 0),
+    white16_20_pct = round(rowSums(data[, c("white16_pct", "white20_pct")]) 
+                        / 2, 0),
+    hispanic16_20_pct = round(rowSums(data[, c("hispanic16_pct", "hispanic20_pct")]) 
+                        / 2, 0),
+    black16_20_pct = round(rowSums(data[, c("black16_pct", "black20_pct")]) 
+                        / 2, 0)
+  )
+
+data <- data %>%
+  mutate(
+    CAINC416_420 = round(rowMeans(data[, c("CAINC420", "CAINC416")]), 4)
+  )
+```
+
+## Testing Models
+```{r}
+#Republican 
+test1 <- lm(r20_amt ~  rreg20_pct + r12_r20_amt + d12_d20_amt + dreg20_pct + d12_d20_amt + o16_o20_pct + black16_20_pct + white16_20_pct, data = data)
+summary(test1)
+data$r1_predict <- predict(test1)
+data$r1_error <- data$r20_amt - data$r1_predict
+sum(data$r1_error)
+
+##summary(lm(r20_amt ~ rreg20_pct + d16_amt + r16_amt, data = data))
+
+
+#Democrat
+test2 <- lm(d20_amt ~ rreg20_pct + d12_d20_pct + dreg20_pct + d12_d20_amt + CAINC416_420 + black16_20_pct, data = data)
+summary(test2)
+data$d2_predict <- predict(test2)
+data$d2_error <- data$d20_amt - data$d2_predict
+sum(data$d2_error)
+
+#Other
+test3 <- lm(o20_amt ~ o16_o20_pct + white16_20_pct, data = data)
+summary(test3)
+data$o2_predict <- predict(test3)
+data$o2_error <- data$o20_amt - data$o2_predict
+sum(data$d2_error)
+```
+
+## Testing with 24 registration details
+```{r}
+#Republican
+(test1_coeff <- test1$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_r24_amt = round(test1_coeff["(Intercept)"] + 
+                     test1_coeff["rreg20_pct"] * rreg24_pct + 
+                     test1_coeff["r12_r20_amt"] * r12_r20_amt + 
+                     test1_coeff["d12_d20_amt"] * d12_d20_amt + 
+                     test1_coeff["dreg20_pct"] * dreg20_pct + 
+                     test1_coeff["o16_o20_pct"] * o16_o20_pct +
+                     test1_coeff["black16_20_pct"] * black24_pct +
+                     test1_coeff["white16_20_pct"] * white24_pct, 0)
+  )
+pr24_amt <- sum(data$predict_r24_amt)
+
+#Democrats
+(test2_coeff <- test2$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_d24_amt = round(test2_coeff["(Intercept)"] + 
+                     test2_coeff["rreg20_pct"] * rreg20_pct +
+                     test2_coeff["d12_d20_pct"] * d12_d20_pct + 
+                     test2_coeff["dreg20_pct"] * dreg24_pct +
+                     test2_coeff["d12_d20_amt"] * d12_d20_amt + 
+                     test2_coeff["CAINC416_420"] * CAINC422 + 
+                     test2_coeff["black16_20_pct"] * black24_pct, 0)
+  )
+pd24_amt <- sum(data$predict_d24_amt)
+
+#Other
+(test3_coeff <- test3$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_o24_amt = round(test3_coeff["(Intercept)"] + 
+                     test3_coeff["o16_o20_pct"] * o20_pct + 
+                     test3_coeff["white16_20_pct"] * white24_pct, 0)
+  )
+po24_amt <- sum(data$predict_o24_amt)
+
+```
+
+## Results
+```{r}
+
+NC24_Predict <- data.frame(
+    Party = c("Democrats", "Republican", "Other"),
+    `Predicted Vote Amount` = c(pd24_amt, pr24_amt, po24_amt),
+    `Predict Vote Share` = c(pd24_amt / (pd24_amt + pr24_amt + po24_amt)*100, pr24_amt 
+                             / (pd24_amt + pr24_amt + po24_amt) *100, po24_amt / (pd24_amt + pr24_amt + 
+                                                                                    po24_amt)*100)
+  )
+
+NC24_Predict
+```
+
+#Nevada
+```{r}
+data <- read.csv("Voting Data - NV.csv")
+```
+
+##Aggregate Total Percentage of Vote Shares and Average Vote Amount Across 2012, 2016, and 2020
+
+```{r}
+data <- data %>%
+  mutate(
+    r12_r20_pct = rowSums(data[, c("r16_amt", "r20_amt", "r12_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")]),
+    d12_d20_pct = rowSums(data[, c("d16_amt", "d20_amt", "d12_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")]),
+    o16_o20_pct = rowSums(data[, c("o16_amt", "o20_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")])
+  )
+
+data <- data %>%
+  mutate(
+    r12_r20_amt = round(rowSums(data[, c("r16_amt", "r20_amt", "r12_amt")]) 
+                        / 3, 0),
+    d12_d20_amt = round(rowSums(data[, c("d16_amt", "d20_amt", "d12_amt")]) 
+                        / 3, 0)
+  )
+
+data <- data %>%
+  mutate(
+    CAINC416_420 = round(rowMeans(data[, c("CAINC420", "CAINC416")]), 4)
+  )
+```
+
+##Testing Models
+
+```{r}
+#Republican 
+test1 <- lm(r20_amt ~ r12_r20_pct + rreg20_pct + r12_r20_amt + d12_d20_amt + 
+              CAINC416_420, data = data)
+summary(test1)
+data$r1_predict <- predict(test1)
+data$r1_error <- data$r20_amt - data$r1_predict
+sum(data$r1_error)
+
+
+#Democrat
+test2 <- lm(d20_amt ~ dreg20_pct + r12_r20_amt + d12_d20_amt + 
+              CAINC420, data = data)
+summary(test2)
+data$d2_predict <- predict(test2)
+data$d2_error <- data$d20_amt - data$d2_predict
+sum(data$d2_error)
+
+#Other
+test3 <- lm(o20_amt ~ r12_r20_amt + o16_o20_pct + d12_d20_amt, data = data)
+summary(test3)
+data$o2_predict <- predict(test3)
+data$o2_error <- data$o20_amt - data$o2_predict
+sum(data$d2_error)
+```
+
+##Testing with 24 registration details
+
+```{r}
+#Republican
+(test1_coeff <- test1$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_r24_amt = round(test1_coeff["(Intercept)"] + 
+                     test1_coeff["r12_r20_pct"] * r12_r20_pct + 
+                     test1_coeff["rreg20_pct"] * rreg24_pct + 
+                     test1_coeff["r12_r20_amt"] * r12_r20_amt +
+                     test1_coeff["d12_d20_amt"] * d12_d20_amt + 
+                     test1_coeff["CAINC416_420"] * CAINC422, 0)
+  )
+pr24_amt <- sum(data$predict_r24_amt)
+
+#Democrats
+(test2_coeff <- test2$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_d24_amt = round(test2_coeff["(Intercept)"] + 
+                     test2_coeff["dreg20_pct"] * dreg24_pct + 
+                     test2_coeff["r12_r20_amt"] * r12_r20_amt +
+                     test2_coeff["d12_d20_amt"] * d12_d20_amt + 
+                     test2_coeff["CAINC420"] * CAINC422, 0)
+  )
+pd24_amt <- sum(data$predict_d24_amt)
+
+#Other
+(test3_coeff <- test3$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_o24_amt = round(test3_coeff["(Intercept)"] + 
+                     test3_coeff["r12_r20_amt"] * (r16_amt + r20_amt)/2 + 
+                     test3_coeff["o16_o20_pct"] * o16_o20_pct +
+                     test3_coeff["d12_d20_amt"] * (d16_amt + d20_amt)/2, 0)
+  )
+po24_amt <- sum(data$predict_o24_amt)
+```
+
+##Results
+
+```{r}
+NV24_Predict <- data.frame(
+    Party = c("Democrats", "Republican", "Other"),
+    `Predicted Vote Amount` = c(pd24_amt, pr24_amt, po24_amt),
+    `Predict Vote Share` = c(pd24_amt / (pd24_amt + pr24_amt + po24_amt)*100, pr24_amt 
+                             / (pd24_amt + pr24_amt + po24_amt) *100, po24_amt / (pd24_amt + pr24_amt + 
+                                                                                    po24_amt)*100)
+  )
+NV24_Predict
+```
+
+#Pennsylvania
+```{r}
+data <- read.csv("Voting Data - PA.csv")
+```
+
+## Aggregate Total Percentage of Vote Shares and Average Vote Amount Across 2012, 2016, and 2020
+```{r}
+data <- data %>%
+  mutate(
+    r12_r20_pct = rowSums(data[, c("r16_amt", "r20_amt", "r12_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")]),
+    d12_d20_pct = rowSums(data[, c("d16_amt", "d20_amt", "d12_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")]),
+    o16_o20_pct = rowSums(data[, c("o16_amt", "o20_amt")]) / 
+      rowSums(data[, c("r16_amt", "r20_amt", "r12_amt", "d16_amt", "d12_amt", 
+                       "d20_amt", "o16_amt", "o20_amt")])
+  )
+
+data <- data %>%
+  mutate(
+    r12_r20_amt = round(rowSums(data[, c("r16_amt", "r20_amt", "r12_amt")]) 
+                        / 3, 0),
+    d12_d20_amt = round(rowSums(data[, c("d16_amt", "d20_amt", "d12_amt")]) 
+                        / 3, 0)
+  )
+
+data <- data %>%
+  mutate(
+    CAINC416_420 = round(rowMeans(data[, c("CAINC420", "CAINC416")]), 4)
+  )
+```
+
+## Testing Models
+```{r}
+#Republican 
+test1 <- lm(r20_amt ~ r12_r20_pct + rreg20_pct + r12_r20_amt + d12_d20_amt + 
+              CAINC416_420, data = data)
+summary(test1)
+data$r1_predict <- predict(test1)
+data$r1_error <- data$r20_amt - data$r1_predict
+sum(data$r1_error)
+
+##summary(lm(r20_amt ~ rreg20_pct + d16_amt + r16_amt, data = data))
+
+
+#Democrat
+test2 <- lm(d20_amt ~ d12_d20_pct + dreg20_pct + r12_r20_amt + d12_d20_amt + 
+              CAINC420, data = data)
+summary(test2)
+data$d2_predict <- predict(test2)
+data$d2_error <- data$d20_amt - data$d2_predict
+sum(data$d2_error)
+
+
+#Other
+test3 <- lm(o20_amt ~ r12_r20_amt + o16_o20_pct + d12_d20_amt, data = data)
+summary(test3)
+data$o2_predict <- predict(test3)
+data$o2_error <- data$o20_amt - data$o2_predict
+sum(data$d2_error)
+```
+
+## Testing with 24 registration details
+```{r}
+#Republican
+(test1_coeff <- test1$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_r24_amt = round(test1_coeff["(Intercept)"] + 
+                     test1_coeff["r12_r20_pct"] * r12_r20_pct + 
+                     test1_coeff["rreg20_pct"] * rreg24_pct + 
+                     test1_coeff["r12_r20_amt"] * r12_r20_amt +
+                     test1_coeff["d12_d20_amt"] * d12_d20_amt + 
+                     test1_coeff["CAINC416_420"] * CAINC422, 0)
+  )
+pr24_amt <- sum(data$predict_r24_amt)
+
+#Democrats
+(test2_coeff <- test2$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_d24_amt = round(test2_coeff["(Intercept)"] + 
+                     test2_coeff["d12_d20_pct"] * d12_d20_pct + 
+                     test2_coeff["dreg20_pct"] * dreg24_pct + 
+                     test2_coeff["r12_r20_amt"] * r12_r20_amt +
+                     test2_coeff["d12_d20_amt"] * d12_d20_amt + 
+                     test2_coeff["CAINC420"] * CAINC422, 0)
+  )
+pd24_amt <- sum(data$predict_d24_amt)
+
+
+#Other
+(test3_coeff <- test3$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_o24_amt = round(test3_coeff["(Intercept)"] + 
+                     test3_coeff["r12_r20_amt"] * (r16_amt + r20_amt)/2 + 
+                     test3_coeff["o16_o20_pct"] * o16_o20_pct +
+                     test3_coeff["d12_d20_amt"] * (d16_amt + d20_amt)/2, 0)
+  )
+po24_amt <- sum(data$predict_o24_amt)
+```
+
+## Results
+```{r}
+
+PA24_Predict <- data.frame(
+    Party = c("Democrats", "Republican", "Other"),
+    `Predicted Vote Amount` = c(pd24_amt, pr24_amt, po24_amt),
+    `Predict Vote Share` = c(pd24_amt / (pd24_amt + pr24_amt + po24_amt)*100, pr24_amt 
+                             / (pd24_amt + pr24_amt + po24_amt) *100, po24_amt / (pd24_amt + pr24_amt + 
+                                                                                    po24_amt)*100)
+  )
+PA24_Predict
+```
+
+#Wisconsin
+```{r}
+data <- read.csv("Voting Data - WI.csv")
+```
+
+
+##Testing Models
+```{r}
+#Republican
+test1 <- lm(r20_amt ~ d12_amt + d16_amt + r16_amt + o16_amt + CAINC420, data = data)
+summary(test1)
+data$r1_predict <- predict(test1)
+data$r1_error <- data$r20_amt - data$r1_predict
+sum(data$r1_error)
+
+
+#Democrats
+test2 <- lm(d20_amt ~ d12_amt + d16_amt + r16_amt + o16_amt + CAINC420, data = data)
+summary(test2)
+data$d2_predict <- predict(test2)
+data$d2_error <- data$d20_amt - data$d2_predict
+sum(data$d2_error)
+
+#Other
+test3 <- lm(o20_amt ~ d12_amt + d16_amt + o16_amt + r12_amt, data = data)
+summary(test3)
+data$o2_predict <- predict(test3)
+data$o2_error <- data$o20_amt - data$o2_predict
+sum(data$d2_error)
+```
+
+##Testing with updated CAINC4 data 
+
+```{r}
+#Republican
+(test1_coeff <- test1$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_r24_amt = round(test1_coeff["(Intercept)"] + 
+                     test1_coeff["d12_amt"] * d12_amt + 
+                     test1_coeff["d16_amt"] * d16_amt +
+                     test1_coeff["r16_amt"] * r16_amt + 
+                     test1_coeff["o16_amt"] * o16_amt + 
+                     test1_coeff["CAINC420"] * CAINC422, 0)
+  )
+pr24_amt <- sum(data$predict_r24_amt)
+
+#Democrats
+(test2_coeff <- test2$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_d24_amt = round(test2_coeff["(Intercept)"] + 
+                     test2_coeff["d12_amt"] * d12_amt + 
+                     test2_coeff["d16_amt"] * d16_amt +
+                     test2_coeff["r16_amt"] * r16_amt + 
+                     test2_coeff["o16_amt"] * o16_amt + 
+                     test2_coeff["CAINC420"] * CAINC422, 0)
+  )
+pd24_amt <- sum(data$predict_d24_amt)
+
+#Other
+(test3_coeff <- test3$coefficients)
+
+data <- data %>%
+  mutate(
+    predict_o24_amt = round(test3_coeff["(Intercept)"] + 
+                     test3_coeff["d12_amt"] * d12_amt + 
+                     test3_coeff["d16_amt"] * d16_amt +
+                     test3_coeff["r12_amt"] * r12_amt +
+                     test3_coeff["o16_amt"] * o16_amt, 0)
+  )
+po24_amt <- sum(data$predict_o24_amt)
+```
+
+##Results
+```{r}
+WI24_Predict <- data.frame(
+    Party = c("Democrats", "Republican", "Other"),
+    `Predicted Vote Amount` = c(pd24_amt, pr24_amt, po24_amt),
+    `Predict Vote Share` = c(pd24_amt / (pd24_amt + pr24_amt + po24_amt)*100, pr24_amt 
+                             / (pd24_amt + pr24_amt + po24_amt) *100, po24_amt / (pd24_amt + pr24_amt + 
+                                                                                    po24_amt)*100)
+  )
+WI24_Predict
+```

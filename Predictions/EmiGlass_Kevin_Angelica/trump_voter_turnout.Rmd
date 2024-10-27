@@ -1,0 +1,42 @@
+```{r}
+  library(dplyr)
+  
+  # Import the datasets
+  presidential_elections <- read.csv("1976-2020-president.csv")
+  presidential_polling <- read.csv("president_polls.csv")
+  
+  # Set weighting variable
+  weight_2016 <- 0.68
+  weight_2020 <- 0.32
+  
+  # Define a function to calculate votes for each election year
+  calculate_votes <- function(election_data) {
+    election_data %>%
+      group_by(state) %>%
+      summarize(
+        non_trump_candidate_votes = sum(candidatevotes[candidate != "TRUMP, DONALD J."], na.rm = TRUE),
+        trump_votes = sum(candidatevotes[candidate == "TRUMP, DONALD J."], na.rm = TRUE),
+        total_votes = non_trump_candidate_votes + trump_votes
+      )
+  }
+  
+  # Filter data by year and calculate votes for 2016 and 2020
+  state_election_2016 <- presidential_elections |>
+    filter(year == 2016) |>
+    calculate_votes()
+  state_election_2020 <- presidential_elections |>
+    filter(year == 2020) |>
+    calculate_votes()
+  
+  # Merge 2016 and 2020 data by state
+  merged_data <- left_join(state_election_2016, state_election_2020, by = "state", suffix = c("_2016", "_2020"))
+  
+  # Calculate the weighted voter turnout
+  weighted_average <- merged_data %>%
+    mutate(weighted_voter_turnout = (total_votes_2016 * weight_2016) + (total_votes_2020 * weight_2020))
+  
+  # Display the result
+  weighted_average
+  
+```
+
